@@ -5,7 +5,7 @@ const {
     createAudioResource, 
     AudioPlayerStatus 
 } = require('@discordjs/voice');
-const ytdl = require('ytdl-core');
+const playdl = require('play-dl');
 
 const client = new Client({
     intents: [
@@ -26,7 +26,7 @@ const cooldowns = new Map();
 const COOLDOWN_TIME = 3000;
 
 client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}! Instant Connect Bot is online.`);
+    console.log(`Logged in as ${client.user.tag}! Secure Graduation Bot is online.`);
 });
 
 client.on('messageCreate', async message => {
@@ -54,19 +54,18 @@ client.on('messageCreate', async message => {
 
     // أمر التشغيل: play [الرابط]
     if (command === 'play') {
-        const url = args[1];
-        if (!url) return message.reply('❌ يرجى كتابة الرابط بعد الأمر مباشرة، هكذا: `play رابط_اليوتيوب`');
+        const query = args.slice(1).join(' ');
+        if (!query) return message.reply('❌ يرجى كتابة الرابط أو اسم المقاطع بعد الأمر، هكذا: `play رابط_اليوتيوب`');
 
         const voiceChannel = message.member?.voice.channel;
         if (!voiceChannel) return message.reply('❌ لازم تكون في روم صوتي عشان تشتغل الأغنية!');
 
         try {
             // إرسال تنبيه وإبراء الذمة فوراً
-            await message.reply('⚠️ **تنبيه وإبراء ذمة:** أنا بريء من سماع ما لا يرضي الله، اللهم قد بلغت اللهم فاشهد. *(وما تقدمونه على أنفسكم انتم مسؤولون عنه)*\n\n⏳ جاري الاتصال الفوري وتشغيل المقطع...');
+            await message.reply('⚠️ **تنبيه وإبراء ذمة:** أنا بريء من سماع ما لا يرضي الله، اللهم قد بلغت اللهم فاشهد. *(وما تقدمونه على أنفسكم انتم مسؤولون عنه)*\n\n⏳ جاري جلب المقطع وتجاوز الحظر...');
             
-            currentStreamUrl = url;
+            currentStreamUrl = query;
 
-            // الاتصال المباشر والفوري بالروم الصوتي بدون شروط معقدة
             currentConnection = joinVoiceChannel({
                 channelId: voiceChannel.id,
                 guildId: voiceChannel.guild.id,
@@ -75,14 +74,29 @@ client.on('messageCreate', async message => {
                 selfMute: false,
             });
 
-            // سحب الصوت المباشر بجودة عالية ومستقرة
-            const stream = ytdl(url, { 
-                filter: 'audioonly', 
-                quality: 'highestaudio',
-                highWaterMark: 1 << 25 
+            // طريقة آمنة ومضمونة لسحب الصوت وتجاوز حظر يوتيوب في السيرفرات السحابية
+            let streamData;
+            let targetUrl = query;
+
+            if (!query.startsWith('http')) {
+                const searchResults = await playdl.search(query, { limit: 1 });
+                if (searchResults.length > 0) {
+                    targetUrl = searchResults[0].url;
+                } else {
+                    return message.channel.send('❌ لم يتم العثور على نتائج مطابقة للبحث.');
+                }
+            }
+
+            const validatedSource = await playdl.video_info(targetUrl);
+            streamData = await playdl.stream(validatedSource.video_details.url, { 
+                discordPlayerCompatibility: true,
+                quality: 2 
             });
 
-            const resource = createAudioResource(stream);
+            const resource = createAudioResource(streamData.stream, {
+                inputType: streamData.type
+            });
+
             player.play(resource);
             currentConnection.subscribe(player);
 
@@ -117,15 +131,13 @@ client.on('messageCreate', async message => {
 });
 
 // إعادة التشغيل التلقائي عند تفعيل اللوب
-player.on(AudioPlayerStatus.Idle, () => {
+player.on(AudioPlayerStatus.Idle, async () => {
     if (isLooping && currentStreamUrl && currentConnection) {
         try {
-            const stream = ytdl(currentStreamUrl, { 
-                filter: 'audioonly', 
-                quality: 'highestaudio',
-                highWaterMark: 1 << 25 
+            const streamData = await playdl.stream(currentStreamUrl, { discordPlayerCompatibility: true });
+            const resource = createAudioResource(streamData.stream, {
+                inputType: streamData.type
             });
-            const resource = createAudioResource(stream);
             player.play(resource);
         } catch (error) {
             console.error(error);
