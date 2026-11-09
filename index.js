@@ -5,7 +5,8 @@ const {
     createAudioResource, 
     AudioPlayerStatus 
 } = require('@discordjs/voice');
-const playdl = require('play-dl');
+const YtDlpWrap = require('yt-dlp-wrap').default;
+const ytDlpWrap = new YtDlpWrap();
 
 const client = new Client({
     intents: [
@@ -26,7 +27,7 @@ const cooldowns = new Map();
 const COOLDOWN_TIME = 3000;
 
 client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}! Bot is online and stable.`);
+    console.log(`Logged in as ${client.user.tag}! Ultimate Bot is online.`);
 });
 
 client.on('messageCreate', async message => {
@@ -74,19 +75,31 @@ client.on('messageCreate', async message => {
                 selfMute: false,
             });
 
-            // استخدام مكتبة play-dl لتشغيل الصوت بدون مشاكل سيرفرات
-            const streamData = await playdl.stream(url);
-            const resource = createAudioResource(streamData.stream, {
-                inputType: streamData.type
+            // استخراج الرابط المباشر بطريقة مستقرة
+            ytDlpWrap.exec([
+                url,
+                '-g',
+                '-f', 'bestaudio',
+                '--no-check-certificates'
+            ]).then(output => {
+                const audioUrl = output.trim().split('\n')[0];
+                if (!audioUrl) {
+                    return message.channel.send('❌ تعذر استخراج الرابط الصوتي.');
+                }
+
+                const resource = createAudioResource(audioUrl);
+                player.play(resource);
+                currentConnection.subscribe(player);
+
+                message.channel.send('🎶 بدأ تشغيل الصوت في الروم بنجاح!');
+            }).catch(err => {
+                console.error(err);
+                message.channel.send('❌ حدث خطأ أثناء جلب الرابط، تأكد من صحة الرابط.');
             });
 
-            player.play(resource);
-            currentConnection.subscribe(player);
-
-            message.channel.send('🎶 بدأ تشغيل الصوت في الروم بنجاح!');
         } catch (error) {
             console.error(error);
-            message.reply('❌ حدث خطأ أثناء تشغيل الصوت، تأكد من صحة الرابط.');
+            message.reply('❌ حدث خطأ أثناء تشغيل الصوت.');
         }
     }
 
@@ -114,17 +127,20 @@ client.on('messageCreate', async message => {
 });
 
 // إعادة التشغيل التلقائي عند تفعيل اللوب
-player.on(AudioPlayerStatus.Idle, async () => {
+player.on(AudioPlayerStatus.Idle, () => {
     if (isLooping && currentStreamUrl && currentConnection) {
-        try {
-            const streamData = await playdl.stream(currentStreamUrl);
-            const resource = createAudioResource(streamData.stream, {
-                inputType: streamData.type
-            });
-            player.play(resource);
-        } catch (error) {
-            console.error(error);
-        }
+        ytDlpWrap.exec([
+            currentStreamUrl,
+            '-g',
+            '-f', 'bestaudio',
+            '--no-check-certificates'
+        ]).then(output => {
+            const audioUrl = output.trim().split('\n')[0];
+            if (audioUrl) {
+                const resource = createAudioResource(audioUrl);
+                player.play(resource);
+            }
+        }).catch(console.error);
     }
 });
 
