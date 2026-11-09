@@ -3,9 +3,7 @@ const {
     joinVoiceChannel, 
     createAudioPlayer, 
     createAudioResource, 
-    AudioPlayerStatus,
-    VoiceConnectionStatus,
-    entersState
+    AudioPlayerStatus 
 } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
 
@@ -28,7 +26,7 @@ const cooldowns = new Map();
 const COOLDOWN_TIME = 3000;
 
 client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}! Final Fixed Bot is online.`);
+    console.log(`Logged in as ${client.user.tag}! Instant Connect Bot is online.`);
 });
 
 client.on('messageCreate', async message => {
@@ -64,11 +62,11 @@ client.on('messageCreate', async message => {
 
         try {
             // إرسال تنبيه وإبراء الذمة فوراً
-            await message.reply('⚠️ **تنبيه وإبراء ذمة:** أنا بريء من سماع ما لا يرضي الله، اللهم قد بلغت اللهم فاشهد. *(وما تقدمونه على أنفسكم انتم مسؤولون عنه)*\n\n⏳ جاري الاتصال بالروم وتشغيل المقطع...');
+            await message.reply('⚠️ **تنبيه وإبراء ذمة:** أنا بريء من سماع ما لا يرضي الله، اللهم قد بلغت اللهم فاشهد. *(وما تقدمونه على أنفسكم انتم مسؤولون عنه)*\n\n⏳ جاري الاتصال الفوري وتشغيل المقطع...');
             
             currentStreamUrl = url;
 
-            // الانضمام للروم الصوتي مع مهلة زمنية مفتوحة ومستقرة لتجنب الـ AbortError
+            // الاتصال المباشر والفوري بالروم الصوتي بدون شروط معقدة
             currentConnection = joinVoiceChannel({
                 channelId: voiceChannel.id,
                 guildId: voiceChannel.guild.id,
@@ -76,13 +74,6 @@ client.on('messageCreate', async message => {
                 selfDeaf: false,
                 selfMute: false,
             });
-
-            try {
-                await entersState(currentConnection, VoiceConnectionStatus.Ready, 20_000);
-            } catch (error) {
-                console.error(error);
-                return message.channel.send('❌ حدثت مشكلة في المهلة الزمنية للاتصال بالروم الصوتي.');
-            }
 
             // سحب الصوت المباشر بجودة عالية ومستقرة
             const stream = ytdl(url, { 
@@ -97,7 +88,7 @@ client.on('messageCreate', async message => {
 
             message.channel.send('🎶 بدأ تشغيل الصوت في الروم بنجاح!');
         } catch (error) {
-            console.error('PLAY COMMAND ERROR:', error);
+            console.error('PLAY ERROR:', error);
             message.reply('❌ حدث خطأ أثناء تشغيل الصوت، تأكد من صحة الرابط.');
         }
     }
