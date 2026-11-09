@@ -9,6 +9,6 @@
     "@discordjs/voice": "^0.16.1",
     "discord.js": "^14.14.0",
     "libsodium-wrappers": "^0.7.13",
-    "ytdl-core": "github:distubejs/ytdl-core"
+    "ytdl-core": "^4.11.5"
   }
 }
