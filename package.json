@@ -1,15 +1,14 @@
 {
-  "name": "my-music-bot",
+  "name": "discord-music-bot",
   "version": "1.0.0",
-  "description": "Discord Music Bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "@discordjs/voice": "^0.16.1",
-    "discord.js": "^14.14.1",
-    "ffmpeg-static": "^5.2.0",
-    "yt-dlp-wrap": "^2.3.9"
+    "discord.js": "^14.14.0",
+    "libsodium-wrappers": "^0.7.13",
+    "play-dl": "^1.9.7"
   }
 }
