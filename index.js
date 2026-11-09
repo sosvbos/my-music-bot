@@ -5,7 +5,7 @@ const {
     createAudioResource, 
     AudioPlayerStatus 
 } = require('@discordjs/voice');
-const ytdl = require('ytdl-core');
+const playdl = require('play-dl');
 
 const client = new Client({
     intents: [
@@ -26,7 +26,7 @@ const cooldowns = new Map();
 const COOLDOWN_TIME = 3000;
 
 client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}! Graduation Bot is 100% online.`);
+    console.log(`Logged in as ${client.user.tag}! MP3 Converter Bot is online.`);
 });
 
 client.on('messageCreate', async message => {
@@ -61,8 +61,8 @@ client.on('messageCreate', async message => {
         if (!voiceChannel) return message.reply('❌ لازم تكون في روم صوتي عشان تشتغل الأغنية!');
 
         try {
-            // رسالة التنبيه وإبراء الذمة المطلوبة
-            await message.reply('⚠️ **تنبيه وإبراء ذمة:** أنا بريء من سماع ما لا يرضي الله، اللهم قد بلغت اللهم فاشهد. *(وما تقدمونه على أنفسكم انتم مسؤولون عنه)*\n\n⏳ جاري جلب الأغنية وتشغيلها...');
+            // إرسال تنبيه وإبراء الذمة فوراً
+            await message.reply('⚠️ **تنبيه وإبراء ذمة:** أنا بريء من سماع ما لا يرضي الله، اللهم قد بلغت اللهم فاشهد. *(وما تقدمونه على أنفسكم انتم مسؤولون عنه)*\n\n⏳ جاري تحويل الرابط إلى صيغة MP3 وتشغيله...');
             
             currentStreamUrl = url;
 
@@ -74,21 +74,31 @@ client.on('messageCreate', async message => {
                 selfMute: false,
             });
 
-            // سحب الصوت المباشر عبر ytdl-core المستقر
-            const stream = ytdl(url, { 
-                filter: 'audioonly', 
-                quality: 'highestaudio',
-                highWaterMark: 1 << 25 
+            // سحب ودعم تدفق الـ MP3 المباشر لتجاوز الحظر
+            let streamData;
+            try {
+                streamData = await playdl.stream(url, { quality: 'highestaudio' });
+            } catch (err) {
+                // طريقة بديلة في حال احتاجت بحث مباشر
+                const searched = await playdl.search(url, { limit: 1 });
+                if (searched.length > 0) {
+                    streamData = await playdl.stream(searched[0].url, { quality: 'highestaudio' });
+                } else {
+                    throw new Error('Conversion failed');
+                }
+            }
+
+            const resource = createAudioResource(streamData.stream, {
+                inputType: streamData.type
             });
 
-            const resource = createAudioResource(stream);
             player.play(resource);
             currentConnection.subscribe(player);
 
-            message.channel.send('🎶 بدأ تشغيل الصوت في الروم بنجاح!');
+            message.channel.send('🎶 تم تحويل المقطع إلى MP3 وبدأ التشغيل في الروم بنجاح!');
         } catch (error) {
             console.error(error);
-            message.reply('❌ حدث خطأ أثناء تشغيل الصوت، تأكد من صحة الرابط.');
+            message.reply('❌ حدث خطأ أثناء التحويل أو التشغيل، تأكد من صحة الرابط.');
         }
     }
 
@@ -116,15 +126,13 @@ client.on('messageCreate', async message => {
 });
 
 // إعادة التشغيل التلقائي عند تفعيل اللوب
-player.on(AudioPlayerStatus.Idle, () => {
+player.on(AudioPlayerStatus.Idle, async () => {
     if (isLooping && currentStreamUrl && currentConnection) {
         try {
-            const stream = ytdl(currentStreamUrl, { 
-                filter: 'audioonly', 
-                quality: 'highestaudio',
-                highWaterMark: 1 << 25 
+            const streamData = await playdl.stream(currentStreamUrl, { quality: 'highestaudio' });
+            const resource = createAudioResource(streamData.stream, {
+                inputType: streamData.type
             });
-            const resource = createAudioResource(stream);
             player.play(resource);
         } catch (error) {
             console.error(error);
