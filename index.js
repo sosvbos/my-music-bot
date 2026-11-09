@@ -5,8 +5,7 @@ const {
     createAudioResource, 
     AudioPlayerStatus 
 } = require('@discordjs/voice');
-const YtDlpWrap = require('yt-dlp-wrap').default;
-const ytDlpWrap = new YtDlpWrap();
+const ytdl = require('ytdl-core');
 
 const client = new Client({
     intents: [
@@ -27,7 +26,7 @@ const cooldowns = new Map();
 const COOLDOWN_TIME = 3000;
 
 client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}! Ultimate Bot is online.`);
+    console.log(`Logged in as ${client.user.tag}! Project Bot is online and stable.`);
 });
 
 client.on('messageCreate', async message => {
@@ -39,7 +38,7 @@ client.on('messageCreate', async message => {
     const validCommands = ['ping', 'play', 'loop', 'stop'];
     if (!validCommands.includes(command)) return;
 
-    // تطبيق مانع السبام
+    // منع السبام
     const userId = message.author.id;
     const now = Date.now();
     if (cooldowns.has(userId)) {
@@ -56,13 +55,15 @@ client.on('messageCreate', async message => {
     // أمر التشغيل: play [الرابط]
     if (command === 'play') {
         const url = args[1];
-        if (!url) return message.reply('❌ يرجى كتابة الرابط بعد الأمر مباشرة، هكذا: `play رابط_اليوتيوب`');
+        if (!url || !ytdl.validateURL(url)) {
+            return message.reply('❌ يرجى كتابة رابط يوتيوب صحيح بعد الأمر، هكذا: `play رابط_اليوتيوب`');
+        }
 
         const voiceChannel = message.member?.voice.channel;
         if (!voiceChannel) return message.reply('❌ لازم تكون في روم صوتي عشان تشتغل الأغنية!');
 
         try {
-            // إرسال تنبيه وإبراء الذمة فوراً
+            // إرسال تنبيه وإبراء الذمة
             await message.reply('⚠️ **تنبيه وإبراء ذمة:** أنا بريء من سماع ما لا يرضي الله، اللهم قد بلغت اللهم فاشهد. *(وما تقدمونه على أنفسكم انتم مسؤولون عنه)*\n\n⏳ جاري جلب الأغنية وتشغيلها...');
             
             currentStreamUrl = url;
@@ -75,28 +76,18 @@ client.on('messageCreate', async message => {
                 selfMute: false,
             });
 
-            // استخراج الرابط المباشر بطريقة مستقرة
-            ytDlpWrap.exec([
-                url,
-                '-g',
-                '-f', 'bestaudio',
-                '--no-check-certificates'
-            ]).then(output => {
-                const audioUrl = output.trim().split('\n')[0];
-                if (!audioUrl) {
-                    return message.channel.send('❌ تعذر استخراج الرابط الصوتي.');
-                }
-
-                const resource = createAudioResource(audioUrl);
-                player.play(resource);
-                currentConnection.subscribe(player);
-
-                message.channel.send('🎶 بدأ تشغيل الصوت في الروم بنجاح!');
-            }).catch(err => {
-                console.error(err);
-                message.channel.send('❌ حدث خطأ أثناء جلب الرابط، تأكد من صحة الرابط.');
+            // سحب البث الصوتي المباشر
+            const stream = ytdl(url, { 
+                filter: 'audioonly', 
+                quality: 'highestaudio',
+                highWaterMark: 1 << 25 
             });
 
+            const resource = createAudioResource(stream);
+            player.play(resource);
+            currentConnection.subscribe(player);
+
+            message.channel.send('🎶 بدأ تشغيل الصوت في الروم بنجاح!');
         } catch (error) {
             console.error(error);
             message.reply('❌ حدث خطأ أثناء تشغيل الصوت.');
@@ -129,18 +120,17 @@ client.on('messageCreate', async message => {
 // إعادة التشغيل التلقائي عند تفعيل اللوب
 player.on(AudioPlayerStatus.Idle, () => {
     if (isLooping && currentStreamUrl && currentConnection) {
-        ytDlpWrap.exec([
-            currentStreamUrl,
-            '-g',
-            '-f', 'bestaudio',
-            '--no-check-certificates'
-        ]).then(output => {
-            const audioUrl = output.trim().split('\n')[0];
-            if (audioUrl) {
-                const resource = createAudioResource(audioUrl);
-                player.play(resource);
-            }
-        }).catch(console.error);
+        try {
+            const stream = ytdl(currentStreamUrl, { 
+                filter: 'audioonly', 
+                quality: 'highestaudio',
+                highWaterMark: 1 << 25 
+            });
+            const resource = createAudioResource(stream);
+            player.play(resource);
+        } catch (error) {
+            console.error(error);
+        }
     }
 });
 
