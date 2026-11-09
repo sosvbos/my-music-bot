@@ -5,7 +5,9 @@ const {
     createAudioResource, 
     AudioPlayerStatus 
 } = require('@discordjs/voice');
-const { YtDlpWrap } = require('yt-dlp-wrap');
+
+// تصحيح طريقة استدعاء yt-dlp-wrap
+const YtDlpWrap = require('yt-dlp-wrap').default;
 const ytDlpWrap = new YtDlpWrap();
 
 const client = new Client({
@@ -24,13 +26,11 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
-    // أمر تجريبي للتأكد أن البوت يشتغل
     if (message.content === '!ping') {
         message.reply('Pong! البوت شغال وسليم 100% 🎵');
     }
 });
 
-// التأكد من قراءة التوكن من Railway وتجنب أي خطأ
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
     console.error("ERROR: DISCORD_TOKEN is missing in Railway Variables!");
