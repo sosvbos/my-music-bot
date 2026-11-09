@@ -1,6 +1,7 @@
+
 {
   "name": "discord-music-bot",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -8,7 +9,6 @@
   "dependencies": {
     "@discordjs/voice": "^0.16.1",
     "discord.js": "^14.14.0",
-    "libsodium-wrappers": "^0.7.13",
-    "play-dl": "^1.9.7"
+    "libsodium-wrappers": "^0.7.13"
   }
 }
