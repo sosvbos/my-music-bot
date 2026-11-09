@@ -186,7 +186,7 @@ function stopBot(guildId, guild) {
     if (queueMap.has(guildId)) {
         const oldData = queueMap.get(guildId);
         try {
-            oldData.player.stop(); اقصد هاذي
+            oldData.player.stop(); 
             if (oldData.connection) oldData.connection.destroy();
             if (oldData.filePath && fs.existsSync(oldData.filePath)) {
                 fs.unlinkSync(oldData.filePath);
