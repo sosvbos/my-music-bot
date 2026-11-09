@@ -23,7 +23,7 @@ let isLooping = false;
 let currentConnection = null;
 
 client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}! 24/7 Music Bot is online.`);
+    console.log(`Logged in as ${client.user.tag}! Music Bot is 100% ready.`);
 });
 
 client.on('messageCreate', async message => {
@@ -37,7 +37,7 @@ client.on('messageCreate', async message => {
         message.reply('Pong! البوت شغال وسليم 100% 🎵');
     }
 
-    // أمر التشغيل: play [الرابط] (بدون علامة تعجب)
+    // أمر التشغيل: play [الرابط]
     if (command === 'play') {
         const url = args[1];
         if (!url) return message.reply('❌ يرجى كتابة الرابط بعد الأمر مباشرة، هكذا: `play رابط_اليوتيوب`');
@@ -57,25 +57,34 @@ client.on('messageCreate', async message => {
                 selfMute: false,
             });
 
-            const stream = ytDlpWrap.execStream([
-                url, 
-                '-f', 'bestaudio', 
-                '--no-check-certificates'
-            ]);
-            
-            const resource = createAudioResource(stream);
+            // سحب الرابط بصيغة صوتية مباشرة تضمن توافق التشغيل
+            ytDlpWrap.exec([
+                url,
+                '-g',
+                '-f', 'bestaudio'
+            ]).then(output => {
+                const audioUrl = output.trim().split('\n')[0];
+                if (!audioUrl) {
+                    return message.channel.send('❌ تعذر استخراج رابط الصوت من يوتيوب.');
+                }
 
-            player.play(resource);
-            currentConnection.subscribe(player);
+                const resource = createAudioResource(audioUrl);
+                player.play(resource);
+                currentConnection.subscribe(player);
 
-            message.channel.send('🎶 بدأ تشغيل الأغنية بنجاح!');
+                message.channel.send('🎶 بدأ تشغيل الأغنية بنجاح!');
+            }).catch(err => {
+                console.error(err);
+                message.channel.send('❌ حدث خطأ أثناء جلب الرابط، تأكد أن الرابط صحيح.');
+            });
+
         } catch (error) {
             console.error(error);
             message.reply('❌ حدث خطأ أثناء تشغيل الأغنية.');
         }
     }
 
-    // أمر التكرار: loop (بدون علامة تعجب)
+    // أمر التكرار: loop
     if (command === 'loop') {
         isLooping = !isLooping;
         if (isLooping) {
@@ -85,7 +94,7 @@ client.on('messageCreate', async message => {
         }
     }
 
-    // أمر الإيقاف: stop (يوقف الصوت ويطلع البوت من الروم)
+    // أمر الإيقاف: stop
     if (command === 'stop') {
         isLooping = false;
         currentStreamUrl = null;
@@ -101,9 +110,17 @@ client.on('messageCreate', async message => {
 // إعادة التشغيل التلقائي عند تفعيل اللوب
 player.on(AudioPlayerStatus.Idle, () => {
     if (isLooping && currentStreamUrl && currentConnection) {
-        const stream = ytDlpWrap.execStream([currentStreamUrl, '-f', 'bestaudio']);
-        const resource = createAudioResource(stream);
-        player.play(resource);
+        ytDlpWrap.exec([
+            currentStreamUrl,
+            '-g',
+            '-f', 'bestaudio'
+        ]).then(output => {
+            const audioUrl = output.trim().split('\n')[0];
+            if (audioUrl) {
+                const resource = createAudioResource(audioUrl);
+                player.play(resource);
+            }
+        }).catch(console.error);
     }
 });
 
