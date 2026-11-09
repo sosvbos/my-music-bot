@@ -23,7 +23,7 @@ let isLooping = false;
 let currentConnection = null;
 
 client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}! 24/7 Unstoppable Music Bot is online.`);
+    console.log(`Logged in as ${client.user.tag}! 24/7 Music Bot is online.`);
 });
 
 client.on('messageCreate', async message => {
@@ -32,24 +32,23 @@ client.on('messageCreate', async message => {
     const args = message.content.trim().split(/\s+/);
     const command = args[0].toLowerCase();
 
-    // أمر الفحص
-    if (command === '!ping') {
+    // أمر الفحص (بدون علامة تعجب)
+    if (command === 'ping') {
         message.reply('Pong! البوت شغال وسليم 100% 🎵');
     }
 
-    // أمر تشغيل الأغنية بدون أقواس: !play [الرابط]
-    if (command === '!play') {
+    // أمر التشغيل: play [الرابط] (بدون علامة تعجب)
+    if (command === 'play') {
         const url = args[1];
-        if (!url) return message.reply('❌ يرجى كتابة الرابط بعد الأمر مباشرة، هكذا: `!play رابط_اليوتيوب`');
+        if (!url) return message.reply('❌ يرجى كتابة الرابط بعد الأمر مباشرة، هكذا: `play رابط_اليوتيوب`');
 
         const voiceChannel = message.member?.voice.channel;
         if (!voiceChannel) return message.reply('❌ لازم تكون في روم صوتي عشان تشتغل الأغنية!');
 
         try {
-            message.reply('⏳ جاري جلب الأغنية وتشغيلها بصوت صافي...');
+            message.reply('⏳ جاري جلب الأغنية وتشغيلها...');
             currentStreamUrl = url;
 
-            // البقاء المستمر في الروم بدون انقطاع
             currentConnection = joinVoiceChannel({
                 channelId: voiceChannel.id,
                 guildId: voiceChannel.guild.id,
@@ -58,7 +57,6 @@ client.on('messageCreate', async message => {
                 selfMute: false,
             });
 
-            // استخدام إعدادات الصوت القياسية لضمان وضوح وقوة الصوت
             const stream = ytDlpWrap.execStream([
                 url, 
                 '-f', 'bestaudio', 
@@ -77,8 +75,8 @@ client.on('messageCreate', async message => {
         }
     }
 
-    // أمر تكرار الأغنية (Loop)
-    if (command === '!loop') {
+    // أمر التكرار: loop (بدون علامة تعجب)
+    if (command === 'loop') {
         isLooping = !isLooping;
         if (isLooping) {
             message.reply('🔂 تم تفعيل **التكرار (Loop)** لهذه الأغنية.');
@@ -86,9 +84,21 @@ client.on('messageCreate', async message => {
             message.reply('🔁 تم إيقاف **التكرار (Loop)**.');
         }
     }
+
+    // أمر الإيقاف: stop (يوقف الصوت ويطلع البوت من الروم)
+    if (command === 'stop') {
+        isLooping = false;
+        currentStreamUrl = null;
+        player.stop();
+        if (currentConnection) {
+            currentConnection.destroy();
+            currentConnection = null;
+        }
+        message.reply('🛑 تم إيقاف الموسيقى ومغادرة الروم بنجاح.');
+    }
 });
 
-// إعادة تشغيل الأغنية تلقائياً في حال تفعيل اللوب أو استمرار التشغيل
+// إعادة التشغيل التلقائي عند تفعيل اللوب
 player.on(AudioPlayerStatus.Idle, () => {
     if (isLooping && currentStreamUrl && currentConnection) {
         const stream = ytDlpWrap.execStream([currentStreamUrl, '-f', 'bestaudio']);
@@ -97,7 +107,6 @@ player.on(AudioPlayerStatus.Idle, () => {
     }
 });
 
-// معالجة الأخطاء لضمان عدم توقف البوت أبداً (يعمل 24/7 بدون حدود)
 process.on('unhandledRejection', error => {
     console.error('Unhandled promise rejection:', error);
 });
