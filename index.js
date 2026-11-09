@@ -22,8 +22,12 @@ let currentStreamUrl = null;
 let isLooping = false;
 let currentConnection = null;
 
+// نظام منع السبام (Cooldown لكل مستخدم)
+const cooldowns = new Map();
+const COOLDOWN_TIME = 3000; // 3 ثواني بين كل أمر للمستخدم
+
 client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}! Music Bot is 100% ready.`);
+    console.log(`Logged in as ${client.user.tag}! Anti-spam Music Bot is online.`);
 });
 
 client.on('messageCreate', async message => {
@@ -32,9 +36,26 @@ client.on('messageCreate', async message => {
     const args = message.content.trim().split(/\s+/);
     const command = args[0].toLowerCase();
 
-    // أمر الفحص (بدون علامة تعجب)
+    // الأوامر المدعومة
+    const validCommands = ['ping', 'play', 'loop', 'stop'];
+    if (!validCommands.includes(command)) return;
+
+    // تطبيق مانع السبام (Anti-Spam Cooldown)
+    const userId = message.author.id;
+    const now = Date.now();
+    if (cooldowns.has(userId)) {
+        const expirationTime = cooldowns.get(userId) + COOLDOWN_TIME;
+        if (now < expirationTime) {
+            // المستخدم يسبم، نتجاهل الرسالة أو نبهه بهدوء بدون إزعاج الشات
+            return; 
+        }
+    }
+    cooldowns.set(userId, now);
+    setTimeout(() => cooldowns.delete(userId), COOLDOWN_TIME);
+
+    // أمر الفحص
     if (command === 'ping') {
-        message.reply('Pong! البوت شغال وسليم 100% 🎵');
+        return message.reply('Pong! البوت شغال وسليم 100% 🎵');
     }
 
     // أمر التشغيل: play [الرابط]
@@ -57,7 +78,6 @@ client.on('messageCreate', async message => {
                 selfMute: false,
             });
 
-            // سحب الرابط بصيغة صوتية مباشرة تضمن توافق التشغيل
             ytDlpWrap.exec([
                 url,
                 '-g',
@@ -75,7 +95,7 @@ client.on('messageCreate', async message => {
                 message.channel.send('🎶 بدأ تشغيل الأغنية بنجاح!');
             }).catch(err => {
                 console.error(err);
-                message.channel.send('❌ حدث خطأ أثناء جلب الرابط، تأكد أن الرابط صحيح.');
+                message.channel.send('❌ حدث خطأ أثناء جلب الرابط، تأكد أن الرابط صالح.');
             });
 
         } catch (error) {
@@ -88,9 +108,9 @@ client.on('messageCreate', async message => {
     if (command === 'loop') {
         isLooping = !isLooping;
         if (isLooping) {
-            message.reply('🔂 تم تفعيل **التكرار (Loop)** لهذه الأغنية.');
+            return message.reply('🔂 تم تفعيل **التكرار (Loop)** لهذه الأغنية.');
         } else {
-            message.reply('🔁 تم إيقاف **التكرار (Loop)**.');
+            return message.reply('🔁 تم إيقاف **التكرار (Loop)**.');
         }
     }
 
@@ -103,7 +123,7 @@ client.on('messageCreate', async message => {
             currentConnection.destroy();
             currentConnection = null;
         }
-        message.reply('🛑 تم إيقاف الموسيقى ومغادرة الروم بنجاح.');
+        return message.reply('🛑 تم إيقاف الموسيقى ومغادرة الروم بنجاح.');
     }
 });
 
