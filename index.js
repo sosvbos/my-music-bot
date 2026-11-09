@@ -26,7 +26,7 @@ const cooldowns = new Map();
 const COOLDOWN_TIME = 3000;
 
 client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}! Project Bot is online and stable.`);
+    console.log(`Logged in as ${client.user.tag}! Graduation Bot is 100% online.`);
 });
 
 client.on('messageCreate', async message => {
@@ -38,7 +38,7 @@ client.on('messageCreate', async message => {
     const validCommands = ['ping', 'play', 'loop', 'stop'];
     if (!validCommands.includes(command)) return;
 
-    // منع السبام
+    // تطبيق مانع السبام
     const userId = message.author.id;
     const now = Date.now();
     if (cooldowns.has(userId)) {
@@ -55,15 +55,13 @@ client.on('messageCreate', async message => {
     // أمر التشغيل: play [الرابط]
     if (command === 'play') {
         const url = args[1];
-        if (!url || !ytdl.validateURL(url)) {
-            return message.reply('❌ يرجى كتابة رابط يوتيوب صحيح بعد الأمر، هكذا: `play رابط_اليوتيوب`');
-        }
+        if (!url) return message.reply('❌ يرجى كتابة الرابط بعد الأمر مباشرة، هكذا: `play رابط_اليوتيوب`');
 
         const voiceChannel = message.member?.voice.channel;
         if (!voiceChannel) return message.reply('❌ لازم تكون في روم صوتي عشان تشتغل الأغنية!');
 
         try {
-            // إرسال تنبيه وإبراء الذمة
+            // رسالة التنبيه وإبراء الذمة المطلوبة
             await message.reply('⚠️ **تنبيه وإبراء ذمة:** أنا بريء من سماع ما لا يرضي الله، اللهم قد بلغت اللهم فاشهد. *(وما تقدمونه على أنفسكم انتم مسؤولون عنه)*\n\n⏳ جاري جلب الأغنية وتشغيلها...');
             
             currentStreamUrl = url;
@@ -76,7 +74,7 @@ client.on('messageCreate', async message => {
                 selfMute: false,
             });
 
-            // سحب البث الصوتي المباشر
+            // سحب الصوت المباشر عبر ytdl-core المستقر
             const stream = ytdl(url, { 
                 filter: 'audioonly', 
                 quality: 'highestaudio',
@@ -90,7 +88,7 @@ client.on('messageCreate', async message => {
             message.channel.send('🎶 بدأ تشغيل الصوت في الروم بنجاح!');
         } catch (error) {
             console.error(error);
-            message.reply('❌ حدث خطأ أثناء تشغيل الصوت.');
+            message.reply('❌ حدث خطأ أثناء تشغيل الصوت، تأكد من صحة الرابط.');
         }
     }
 
