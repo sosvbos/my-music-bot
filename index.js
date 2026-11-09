@@ -5,8 +5,7 @@ const {
     createAudioResource, 
     AudioPlayerStatus 
 } = require('@discordjs/voice');
-const YtDlpWrap = require('yt-dlp-wrap').default;
-const ytDlpWrap = new YtDlpWrap();
+const playdl = require('play-dl');
 
 const client = new Client({
     intents: [
@@ -27,7 +26,7 @@ const cooldowns = new Map();
 const COOLDOWN_TIME = 3000;
 
 client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}! Bot is online with Disclaimer.`);
+    console.log(`Logged in as ${client.user.tag}! Bot is online and stable.`);
 });
 
 client.on('messageCreate', async message => {
@@ -53,7 +52,7 @@ client.on('messageCreate', async message => {
         return message.reply('Pong! البوت شغال وسليم 100% 🎵');
     }
 
-    // أمر التشغيل: play [الرابط] (مع إرسال تنبيه وإبراء ذمة أولاً)
+    // أمر التشغيل: play [الرابط]
     if (command === 'play') {
         const url = args[1];
         if (!url) return message.reply('❌ يرجى كتابة الرابط بعد الأمر مباشرة، هكذا: `play رابط_اليوتيوب`');
@@ -62,7 +61,7 @@ client.on('messageCreate', async message => {
         if (!voiceChannel) return message.reply('❌ لازم تكون في روم صوتي عشان تشتغل الأغنية!');
 
         try {
-            // إرسال تنبيه وإبراء الذمة فوراً عند طلب التشغيل
+            // إرسال تنبيه وإبراء الذمة فوراً
             await message.reply('⚠️ **تنبيه وإبراء ذمة:** أنا بريء من سماع ما لا يرضي الله، اللهم قد بلغت اللهم فاشهد. *(وما تقدمونه على أنفسكم انتم مسؤولون عنه)*\n\n⏳ جاري جلب الأغنية وتشغيلها...');
             
             currentStreamUrl = url;
@@ -75,30 +74,19 @@ client.on('messageCreate', async message => {
                 selfMute: false,
             });
 
-            // الطريقة الأولى المستقرة لاستخراج الرابط
-            ytDlpWrap.exec([
-                url,
-                '-g',
-                '-f', 'bestaudio'
-            ]).then(output => {
-                const audioUrl = output.trim().split('\n')[0];
-                if (!audioUrl) {
-                    return message.channel.send('❌ تعذر استخراج الرابط الصوتي من يوتيوب.');
-                }
-
-                const resource = createAudioResource(audioUrl);
-                player.play(resource);
-                currentConnection.subscribe(player);
-
-                message.channel.send('🎶 بدأ تشغيل الصوت في الروم بنجاح!');
-            }).catch(err => {
-                console.error(err);
-                message.channel.send('❌ حدث خطأ أثناء جلب الرابط، تأكد من صحة الرابط.');
+            // استخدام مكتبة play-dl لتشغيل الصوت بدون مشاكل سيرفرات
+            const streamData = await playdl.stream(url);
+            const resource = createAudioResource(streamData.stream, {
+                inputType: streamData.type
             });
 
+            player.play(resource);
+            currentConnection.subscribe(player);
+
+            message.channel.send('🎶 بدأ تشغيل الصوت في الروم بنجاح!');
         } catch (error) {
             console.error(error);
-            message.reply('❌ حدث خطأ أثناء تشغيل الصوت.');
+            message.reply('❌ حدث خطأ أثناء تشغيل الصوت، تأكد من صحة الرابط.');
         }
     }
 
@@ -126,19 +114,17 @@ client.on('messageCreate', async message => {
 });
 
 // إعادة التشغيل التلقائي عند تفعيل اللوب
-player.on(AudioPlayerStatus.Idle, () => {
+player.on(AudioPlayerStatus.Idle, async () => {
     if (isLooping && currentStreamUrl && currentConnection) {
-        ytDlpWrap.exec([
-            currentStreamUrl,
-            '-g',
-            '-f', 'bestaudio'
-        ]).then(output => {
-            const audioUrl = output.trim().split('\n')[0];
-            if (audioUrl) {
-                const resource = createAudioResource(audioUrl);
-                player.play(resource);
-            }
-        }).catch(console.error);
+        try {
+            const streamData = await playdl.stream(currentStreamUrl);
+            const resource = createAudioResource(streamData.stream, {
+                inputType: streamData.type
+            });
+            player.play(resource);
+        } catch (error) {
+            console.error(error);
+        }
     }
 });
 
